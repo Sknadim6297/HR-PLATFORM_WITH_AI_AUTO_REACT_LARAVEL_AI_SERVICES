@@ -17,15 +17,23 @@ const AdminJobsPage = lazy(() => import('../pages/admin/AdminJobsPage'))
 const AdminJobCreatePage = lazy(() => import('../pages/admin/AdminJobCreatePage'))
 const AdminJobEditPage = lazy(() => import('../pages/admin/AdminJobEditPage'))
 const AdminJobDetailsPage = lazy(() => import('../pages/admin/AdminJobDetailsPage'))
+const AdminApplicationsPage = lazy(() => import('../pages/admin/AdminApplicationsPage'))
+const AdminApplicationDetailsPage = lazy(() => import('../pages/admin/AdminApplicationDetailsPage'))
 
 const HrDashboard = lazy(() => import('../pages/hr/HrDashboard'))
 const HrJobsPage = lazy(() => import('../pages/hr/HrJobsPage'))
 const HrJobCreatePage = lazy(() => import('../pages/hr/HrJobCreatePage'))
 const HrJobEditPage = lazy(() => import('../pages/hr/HrJobEditPage'))
 const HrJobDetailsPage = lazy(() => import('../pages/hr/HrJobDetailsPage'))
+const HrApplicationsPage = lazy(() => import('../pages/hr/HrApplicationsPage'))
+const HrApplicationDetailsPage = lazy(() => import('../pages/hr/HrApplicationDetailsPage'))
 
 const CandidateDashboard = lazy(() => import('../pages/candidate/CandidateDashboard'))
-const PlaceholderPage = lazy(() => import('../pages/PlaceholderPage'))
+const CandidateJobsPage = lazy(() => import('../pages/candidate/CandidateJobsPage'))
+const CandidateJobDetailsPage = lazy(() => import('../pages/candidate/CandidateJobDetailsPage'))
+const CandidateApplicationsPage = lazy(() => import('../pages/candidate/CandidateApplicationsPage'))
+const CandidateApplicationDetailsPage = lazy(() => import('../pages/candidate/CandidateApplicationDetailsPage'))
+const CandidateProfilePage = lazy(() => import('../pages/candidate/CandidateProfilePage'))
 
 function LazyFallback() {
   return (
@@ -55,7 +63,8 @@ export function AppRoutes() {
                 <Route path="jobs/create" element={<AdminJobCreatePage />} />
                 <Route path="jobs/:id" element={<AdminJobDetailsPage />} />
                 <Route path="jobs/:id/edit" element={<AdminJobEditPage />} />
-                <Route path="applications" element={<PlaceholderPage title="Applications" description="Application pipeline UI arrives in the next frontend milestone." />} />
+                <Route path="applications" element={<AdminApplicationsPage />} />
+                <Route path="applications/:id" element={<AdminApplicationDetailsPage />} />
               </Route>
             </Route>
 
@@ -66,16 +75,19 @@ export function AppRoutes() {
                 <Route path="jobs/create" element={<HrJobCreatePage />} />
                 <Route path="jobs/:id" element={<HrJobDetailsPage />} />
                 <Route path="jobs/:id/edit" element={<HrJobEditPage />} />
-                <Route path="applications" element={<PlaceholderPage title="Applications" description="HR screening pipeline UI arrives next." />} />
+                <Route path="applications" element={<HrApplicationsPage />} />
+                <Route path="applications/:id" element={<HrApplicationDetailsPage />} />
               </Route>
             </Route>
 
             <Route element={<RoleRoute allow={ROLES.CANDIDATE} />}>
               <Route path="/candidate" element={<CandidateLayout />}>
                 <Route index element={<CandidateDashboard />} />
-                <Route path="jobs" element={<PlaceholderPage title="Browse jobs" description="Job browsing UI arrives in the next frontend milestone." />} />
-                <Route path="applications" element={<PlaceholderPage title="My applications" description="Application tracking UI arrives next." />} />
-                <Route path="profile" element={<PlaceholderPage title="Profile" description="Profile editing UI arrives next." />} />
+                <Route path="jobs" element={<CandidateJobsPage />} />
+                <Route path="jobs/:id" element={<CandidateJobDetailsPage />} />
+                <Route path="applications" element={<CandidateApplicationsPage />} />
+                <Route path="applications/:id" element={<CandidateApplicationDetailsPage />} />
+                <Route path="profile" element={<CandidateProfilePage />} />
               </Route>
             </Route>
           </Route>

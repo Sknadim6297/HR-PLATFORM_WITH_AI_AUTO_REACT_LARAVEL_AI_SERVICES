@@ -72,10 +72,12 @@ export default function AdminDashboard() {
             <Card title="Jobs">
               <p className="stat-value">{state.jobs}</p>
               <p className="muted">Job postings currently in the system.</p>
+              <Link className="text-link" to="/admin/jobs">Manage jobs</Link>
             </Card>
             <Card title="Applications">
               <p className="stat-value">{state.applications}</p>
               <p className="muted">Total applications received so far.</p>
+              <Link className="text-link" to="/admin/applications">View applications</Link>
             </Card>
             <Card title="Status">
               <p className="stat-value">All good</p>
@@ -84,11 +86,14 @@ export default function AdminDashboard() {
           </div>
 
           <div className="dashboard-actions">
+            <Link to="/admin/applications">
+              <Button type="button">Applications</Button>
+            </Link>
             <Link to="/admin/jobs">
               <Button type="button" variant="secondary">Manage jobs</Button>
             </Link>
             <Link to="/admin/jobs/create">
-              <Button type="button">Create job</Button>
+              <Button type="button" variant="ghost">Create job</Button>
             </Link>
           </div>
         </>

@@ -25,7 +25,12 @@ export async function updateApplicationStatus(id, status) {
   return data
 }
 
-export async function aiScreenApplication(id) {
-  const { data } = await api.post(`/applications/${id}/ai-screen`)
-  return data
-}
+export { runAiScreening as aiScreenApplication } from './ai'
+
+/** Aliases matching product language — same endpoints. */
+export const getMyApplications = getApplications
+export const getMyApplication = getApplication
+export const getHRApplications = getApplications
+export const getHRApplication = getApplication
+export const getStaffApplications = getApplications
+export const getStaffApplication = getApplication

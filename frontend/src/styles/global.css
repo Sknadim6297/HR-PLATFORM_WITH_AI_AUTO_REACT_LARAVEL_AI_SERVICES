@@ -889,6 +889,249 @@ textarea {
   }
 }
 
+.candidate-job-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.85rem;
+}
+
+.apply-modal,
+.resume-uploader,
+.application-actions,
+.stack-gap {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.resume-status__note {
+  margin-top: 0.35rem;
+  color: var(--info);
+  font-weight: 600;
+}
+
+.resume-status__note--ok {
+  color: var(--success);
+}
+
+.resume-status__note--err {
+  color: var(--danger);
+}
+
+.application-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.application-timeline__item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--ink-soft);
+}
+
+.application-timeline__dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  background: var(--line);
+  flex-shrink: 0;
+}
+
+.application-timeline__item--done {
+  color: var(--ink);
+}
+
+.application-timeline__item--done .application-timeline__dot {
+  background: var(--brand);
+}
+
+.application-timeline__item--current {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.application-timeline__item--current .application-timeline__dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(196, 107, 45, 0.18);
+}
+
+.application-timeline__item--muted {
+  opacity: 0.45;
+}
+
+.chip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip-list li {
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.notification-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.notification-list__item {
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.notification-list__item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.notification-list__item .text-link {
+  margin-top: 0.35rem;
+}
+
+.application-resume-note {
+  margin-top: 0.75rem;
+}
+
+.candidate-ai-section {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.ai-assessment {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.ai-assessment__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.ai-assessment__header h2 {
+  font-size: 1.55rem;
+}
+
+.ai-assessment__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.ai-score {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.ai-score__ring {
+  --ai-score: 0%;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(var(--brand) var(--ai-score), var(--line) 0);
+  flex-shrink: 0;
+}
+
+.ai-score__inner {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--paper-elevated);
+  display: grid;
+  place-content: center;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.ai-score__value {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ai-score__max {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.ai-score__meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-score__label {
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 0.45rem;
+}
+
+.ai-score__bar {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.ai-score__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+}
+
+.ai-state-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.ai-bullet-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.ai-ready-note {
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: var(--success);
+}
+
+@media (max-width: 960px) {
+  .ai-assessment__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-assessment__header {
+    flex-direction: column;
+  }
+}
+
 @media (max-width: 640px) {
   .app-shell__content,
   .app-shell__header {
