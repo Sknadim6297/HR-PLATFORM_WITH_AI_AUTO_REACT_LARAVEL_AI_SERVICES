@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\AiDocumentStatus;
 use App\Exceptions\DocumentChunkingException;
+use App\Jobs\GenerateDocumentChunkEmbedding;
 use App\Jobs\ProcessAiDocument;
 use App\Jobs\ProcessAiDocumentChunks;
 use App\Models\AiDocument;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Services\AI\DocumentChunker;
 use App\Services\AI\DocumentTextExtractor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,9 +24,26 @@ class AiDocumentChunkingTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config([
+            'services.openai.key' => 'test-openai-key',
+            'ai.embeddings.provider' => 'openai',
+            'ai.embeddings.model' => 'text-embedding-3-small',
+        ]);
+    }
+
     public function test_successful_document_processing_creates_chunks(): void
     {
         Storage::fake('local');
+        Http::fake([
+            'api.openai.com/v1/embeddings' => Http::response([
+                'data' => [['embedding' => [0.1, 0.2, 0.3], 'index' => 0]],
+                'model' => 'text-embedding-3-small',
+            ], 200),
+        ]);
 
         $user = User::factory()->create();
         $path = 'ai-documents/'.$user->id.'/'.Str::uuid().'.txt';
@@ -57,10 +76,15 @@ class AiDocumentChunkingTest extends TestCase
             $document->chunks()->pluck('chunk_index')->all()
         );
         $this->assertNull($document->error_message);
+        $this->assertTrue(
+            $document->chunks()->get()->every(fn (AiDocumentChunk $chunk): bool => $chunk->isEmbedded())
+        );
     }
 
     public function test_chunk_job_is_idempotent_and_does_not_duplicate_chunks(): void
     {
+        Queue::fake();
+
         $user = User::factory()->create();
 
         $document = AiDocument::factory()->create([
@@ -86,11 +110,14 @@ class AiDocumentChunkingTest extends TestCase
             $firstCount,
             AiDocumentChunk::query()->where('ai_document_id', $document->id)->count()
         );
-        $this->assertSame(AiDocumentStatus::Completed, $document->fresh()->status);
+        $this->assertSame(AiDocumentStatus::Processing, $document->fresh()->status);
+        Queue::assertPushed(GenerateDocumentChunkEmbedding::class);
     }
 
     public function test_chunk_metadata_is_stored_correctly(): void
     {
+        Queue::fake();
+
         $user = User::factory()->create();
 
         $document = AiDocument::factory()->create([
@@ -112,6 +139,7 @@ class AiDocumentChunkingTest extends TestCase
         $this->assertSame(0, $chunk->metadata['chunk_index']);
         $this->assertSame(4, $chunk->metadata['word_count']);
         $this->assertSame(mb_strlen($chunk->content), $chunk->metadata['character_count']);
+        $this->assertSame(AiDocumentStatus::Processing, $document->fresh()->status);
     }
 
     public function test_chunking_failure_marks_document_failed_safely(): void

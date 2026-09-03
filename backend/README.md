@@ -1,59 +1,126 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# AI HR Platform — Backend
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel 12 + PHP 8.2 backend for an AI-powered Recruitment & HR Automation Platform.
 
-## About Laravel
+## Architecture
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+```
+Job → Application → Resume (AiDocument) → AI Analysis → Job Match → Screening → HR Decision → Automation
+```
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+AI infrastructure (unchanged):
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```
+Upload → Extract → Chunk → Embed → Vector Search / RAG
+```
 
-## Learning Laravel
+## Roles
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+| Role | Capabilities |
+|------|--------------|
+| **admin** | Full access |
+| **hr** | Manage jobs, review applications, AI screening, status transitions |
+| **candidate** | Profile, published jobs, own applications/documents |
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Core API Endpoints
 
-## Laravel Sponsors
+### Auth
+- `POST /api/register`
+- `POST /api/login`
+- `GET /api/me`
+- `POST /api/logout`
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Jobs
+- `GET /api/jobs` — candidates see published only; HR/Admin can filter
+- `POST /api/jobs`
+- `GET /api/jobs/{job}`
+- `PUT /api/jobs/{job}`
+- `DELETE /api/jobs/{job}`
+- `POST /api/jobs/{job}/publish`
+- `POST /api/jobs/{job}/close`
 
-### Premium Partners
+### Candidate profile
+- `GET /api/candidate/profile`
+- `PUT /api/candidate/profile`
+- `GET /api/candidate/profiles/{profile}` — HR/Admin/owner
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### Applications
+- `POST /api/jobs/{job}/applications`
+- `GET /api/jobs/{job}/applications` — HR/Admin
+- `GET /api/applications`
+- `GET /api/applications/{application}`
+- `PATCH /api/applications/{application}/status`
+- `POST /api/applications/{application}/ai-screen` — advisory only
 
-## Contributing
+### AI (existing)
+- `POST /api/ai/documents`
+- `POST /api/ai/search`
+- `POST /api/ai/ask`
+- `POST /api/ai/workflow`
+- `POST /api/ai/generate`
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Notifications
+- `GET /api/notifications`
 
-## Code of Conduct
+## Application statuses
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+`applied → screening → shortlisted → interview → selected|rejected`
 
-## Security Vulnerabilities
+Candidate may `withdraw` from allowed stages. Invalid transitions return `422`.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## AI pipeline (queued)
 
-## License
+1. Document extraction  
+2. Chunking  
+3. Embeddings  
+4. `AnalyzeCandidateResume`  
+5. `GenerateJobMatch`  
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Only **completed** resumes are analyzed. Jobs are idempotent.
+
+AI screening is **decision support only** — it never auto-selects/rejects.
+
+## Automation (n8n)
+
+Configured via `config/automation.php` / `N8N_*` env vars.
+
+Approved workflows only (no arbitrary webhook URLs from clients). Events are recorded in `automation_events` with unique `event_key` for idempotency.
+
+## Security model
+
+- Sanctum authentication
+- Policies for jobs, applications, profiles
+- Ownership 404 semantics (no existence leaks)
+- No embeddings / file paths / extracted text / prompts / API keys in API responses
+- Rate limits: `api` (60/min), `ai` (20/min)
+- Audit logs omit secrets and document bodies
+
+## Environment
+
+See `.env.example` for:
+
+- `OPENAI_API_KEY`, `OPENAI_MODEL`
+- `AI_*` embedding/RAG settings
+- `N8N_ENABLED`, `N8N_BASE_URL`, workflow path mappings
+
+## Queue
+
+```bash
+php artisan migrate
+php artisan queue:work
+```
+
+`QUEUE_CONNECTION=database` recommended for local/production workers.
+
+## Testing
+
+```bash
+php artisan test
+vendor/bin/pint --test
+```
+
+External OpenAI/n8n calls are faked in tests.
+
+## Backend freeze
+
+This backend is feature-complete for the first React frontend release (Admin + HR + Candidate portals). Frontend is a separate milestone.

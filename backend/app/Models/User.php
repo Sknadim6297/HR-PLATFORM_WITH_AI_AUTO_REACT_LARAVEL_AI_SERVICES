@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -107,5 +108,25 @@ class User extends Authenticatable
     public function aiDocuments(): HasMany
     {
         return $this->hasMany(AiDocument::class);
+    }
+
+    public function aiConversations(): HasMany
+    {
+        return $this->hasMany(AiConversation::class);
+    }
+
+    public function candidateProfile(): HasOne
+    {
+        return $this->hasOne(CandidateProfile::class);
+    }
+
+    public function createdJobs(): HasMany
+    {
+        return $this->hasMany(Job::class, 'created_by');
+    }
+
+    public function jobApplications(): HasMany
+    {
+        return $this->hasMany(JobApplication::class, 'candidate_id');
     }
 }

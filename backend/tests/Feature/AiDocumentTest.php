@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\AI\DocumentTextExtractor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -194,6 +195,18 @@ class AiDocumentTest extends TestCase
     public function test_successful_txt_extraction_completes_document(): void
     {
         Storage::fake('local');
+        Http::fake([
+            'api.openai.com/v1/embeddings' => Http::response([
+                'data' => [['embedding' => [0.01, 0.02, 0.03], 'index' => 0]],
+                'model' => 'text-embedding-3-small',
+            ], 200),
+        ]);
+
+        config([
+            'services.openai.key' => 'test-openai-key',
+            'ai.embeddings.provider' => 'openai',
+            'ai.embeddings.model' => 'text-embedding-3-small',
+        ]);
 
         $user = User::factory()->create();
         $path = 'ai-documents/'.$user->id.'/'.Str::uuid().'.txt';
@@ -221,6 +234,7 @@ class AiDocumentTest extends TestCase
         $this->assertNotNull($document->processed_at);
         $this->assertNull($document->error_message);
         $this->assertSame(1, $document->chunks()->count());
+        $this->assertTrue($document->chunks()->first()->isEmbedded());
     }
 
     public function test_failed_extraction_marks_document_failed_safely(): void

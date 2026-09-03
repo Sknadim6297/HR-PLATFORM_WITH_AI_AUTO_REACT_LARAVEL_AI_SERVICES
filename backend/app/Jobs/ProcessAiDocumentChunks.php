@@ -43,9 +43,7 @@ class ProcessAiDocumentChunks implements ShouldQueue
             return;
         }
 
-        if ($document->status === AiDocumentStatus::Completed
-            && $document->chunks()->exists()
-        ) {
+        if ($document->status === AiDocumentStatus::Completed) {
             return;
         }
 
@@ -53,6 +51,13 @@ class ProcessAiDocumentChunks implements ShouldQueue
             throw new DocumentChunkingException(
                 'Document text is missing and cannot be chunked.'
             );
+        }
+
+        // Chunks already exist (e.g. retry after partial embedding) — only embed missing ones.
+        if ($document->chunks()->exists()) {
+            $this->dispatchEmbeddingJobs($document);
+
+            return;
         }
 
         Log::info('AI document chunking started.', [
@@ -81,7 +86,7 @@ class ProcessAiDocumentChunks implements ShouldQueue
             }
 
             $document->forceFill([
-                'status' => AiDocumentStatus::Completed,
+                'status' => AiDocumentStatus::Processing,
                 'error_message' => null,
             ])->save();
         });
@@ -89,8 +94,10 @@ class ProcessAiDocumentChunks implements ShouldQueue
         Log::info('AI document chunking completed.', [
             'document_id' => $document->id,
             'user_id' => $document->user_id,
-            'chunk_count' => count($chunks),
+            'chunk_count' => $document->chunks()->count(),
         ]);
+
+        $this->dispatchEmbeddingJobs($document->fresh());
     }
 
     public function failed(?Throwable $exception): void
@@ -111,6 +118,47 @@ class ProcessAiDocumentChunks implements ShouldQueue
             'status' => AiDocumentStatus::Failed,
             'error_message' => $this->safeErrorMessage($exception),
         ])->save();
+    }
+
+    private function dispatchEmbeddingJobs(?AiDocument $document): void
+    {
+        if ($document === null) {
+            return;
+        }
+
+        $chunkIds = $document->chunks()
+            ->where(function ($query): void {
+                $query->whereNull('embedding')
+                    ->orWhereNull('embedded_at');
+            })
+            ->pluck('id');
+
+        if ($chunkIds->isEmpty()) {
+            AiDocument::query()
+                ->whereKey($document->id)
+                ->where('status', AiDocumentStatus::Processing->value)
+                ->whereHas('chunks')
+                ->whereDoesntHave('chunks', function ($query): void {
+                    $query->whereNull('embedding')
+                        ->orWhereNull('embedded_at');
+                })
+                ->update([
+                    'status' => AiDocumentStatus::Completed->value,
+                    'error_message' => null,
+                    'updated_at' => now(),
+                ]);
+
+            return;
+        }
+
+        foreach ($chunkIds as $chunkId) {
+            GenerateDocumentChunkEmbedding::dispatch((int) $chunkId);
+        }
+
+        Log::info('AI document embedding jobs dispatched.', [
+            'document_id' => $document->id,
+            'pending_chunk_count' => $chunkIds->count(),
+        ]);
     }
 
     private function safeErrorMessage(?Throwable $exception): string
