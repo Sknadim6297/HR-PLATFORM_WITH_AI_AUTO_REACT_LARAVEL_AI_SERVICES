@@ -1,16 +1,36 @@
-# React + Vite
+# HireFlow AI — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite client for the Laravel recruitment API.
 
-Currently, two official plugins are available:
+## Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+cp .env.example .env
+npm install
+npm run dev
+```
 
-## React Compiler
+`VITE_API_URL` should point at the Laravel API, e.g. `http://localhost:8000/api`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Scripts
 
-## Expanding the ESLint configuration
+- `npm run dev` — local development
+- `npm run build` — production build
+- `npm run preview` — preview production build
+- `npm run lint` — ESLint
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Architecture
+
+- `src/api` — Axios client + endpoint modules
+- `src/context` — Auth + toast providers
+- `src/routes` — protected / role / guest routing
+- `src/layouts` — shared AppShell-based role layouts
+- `src/pages` — auth, dashboards (foundation), errors
+
+Authentication uses Sanctum **Bearer tokens** stored via `src/utils/tokenStorage.js`.
+
+## Security notes
+
+- Never put OpenAI or n8n secrets in the frontend.
+- All AI calls go through Laravel.
+- Frontend role checks are UX only; Laravel authorizes every request.
