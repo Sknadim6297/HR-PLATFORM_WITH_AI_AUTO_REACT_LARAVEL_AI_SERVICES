@@ -2,11 +2,12 @@
 
 namespace App\Enums;
 
-enum UserRole: string
+enum AiDocumentStatus: string
 {
-    case Admin = 'admin';
-    case Candidate = 'candidate';
-    case Hr = 'hr';
+    case Uploaded = 'uploaded';
+    case Processing = 'processing';
+    case Completed = 'completed';
+    case Failed = 'failed';
 
     /**
      * @return list<string>

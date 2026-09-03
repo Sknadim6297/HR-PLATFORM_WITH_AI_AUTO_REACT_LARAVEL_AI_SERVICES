@@ -2,11 +2,11 @@
 
 namespace App\Enums;
 
-enum UserRole: string
+enum AiTask: string
 {
-    case Admin = 'admin';
-    case Candidate = 'candidate';
-    case Hr = 'hr';
+    case Summarize = 'summarize';
+    case Generate = 'generate';
+    case Classify = 'classify';
 
     /**
      * @return list<string>
