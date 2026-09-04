@@ -22,8 +22,8 @@ return [
     | Embeddings
     |--------------------------------------------------------------------------
     |
-    | OpenAI credentials are reused from config/services.php (OPENAI_API_KEY).
-    | Additional providers can be added later without changing queue/document flow.
+    | Supported providers: openai, gemini.
+    | OpenAI uses OPENAI_API_KEY. Gemini uses GEMINI_API_KEY.
     |
     */
 

@@ -46,6 +46,7 @@ export function ApplicationsIndexPage({
         onFilterChange={setFilter}
         onClear={clearFilters}
         showScoreFilters={showScoreFilters}
+        forStaff={forStaff}
       />
 
       {loading ? <Spinner label="Loading applications…" /> : null}

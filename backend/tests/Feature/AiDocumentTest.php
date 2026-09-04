@@ -164,6 +164,53 @@ class AiDocumentTest extends TestCase
             ->assertJsonPath('message', 'Document not found.');
     }
 
+    public function test_hr_can_view_resume_document_attached_to_application(): void
+    {
+        $candidate = User::factory()->candidate()->create();
+        $hr = User::factory()->hr()->create();
+
+        $document = AiDocument::factory()->create([
+            'user_id' => $candidate->id,
+            'original_name' => 'candidate-resume.pdf',
+            'status' => AiDocumentStatus::Processing,
+        ]);
+
+        $job = \App\Models\Job::factory()->published()->create([
+            'created_by' => $hr->id,
+        ]);
+
+        \App\Models\JobApplication::factory()->create([
+            'job_id' => $job->id,
+            'candidate_id' => $candidate->id,
+            'resume_document_id' => $document->id,
+        ]);
+
+        Sanctum::actingAs($hr);
+
+        $this->getJson('/api/ai/documents/'.$document->id)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.id', $document->id)
+            ->assertJsonPath('data.original_name', 'candidate-resume.pdf')
+            ->assertJsonPath('data.status', AiDocumentStatus::Processing->value)
+            ->assertJsonMissingPath('data.file_path');
+    }
+
+    public function test_candidate_still_cannot_view_unrelated_foreign_document(): void
+    {
+        $candidate = User::factory()->candidate()->create();
+        $other = User::factory()->candidate()->create();
+
+        $foreign = AiDocument::factory()->create([
+            'user_id' => $other->id,
+        ]);
+
+        Sanctum::actingAs($candidate);
+
+        $this->getJson('/api/ai/documents/'.$foreign->id)
+            ->assertNotFound();
+    }
+
     public function test_user_can_view_their_own_document_metadata(): void
     {
         $user = User::factory()->create();

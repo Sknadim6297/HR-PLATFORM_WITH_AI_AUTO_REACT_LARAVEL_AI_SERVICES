@@ -113,11 +113,12 @@ export function AiAssessmentCard({
             </Card>
           ) : null}
 
-          {forStaff ? (
+          {/* Screening only after analysis + match exist — avoid a disabled dead-end button. */}
+          {forStaff && analysis && match ? (
             <AiScreeningCard
               canRun
-              analysisReady={Boolean(analysis)}
-              matchReady={Boolean(match)}
+              analysisReady
+              matchReady
               screening={screening}
               screeningMeta={screeningMeta}
               loading={screeningLoading}

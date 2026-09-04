@@ -157,7 +157,7 @@ class ApplicationService
                 'job.creator:id,name,email',
                 'candidate:id,name,email',
                 'candidate.candidateProfile',
-                'resumeDocument',
+                'resumeDocument' => fn ($query) => $query->withCount('chunks'),
                 'resumeAnalysis',
                 'jobMatch',
             ])

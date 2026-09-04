@@ -26,6 +26,7 @@ use App\Models\JobApplication;
 use App\Policies\CandidateProfilePolicy;
 use App\Policies\JobApplicationPolicy;
 use App\Policies\JobPolicy;
+use App\Services\AI\GeminiLlmProvider;
 use App\Services\AI\MySqlVectorStore;
 use App\Services\AI\OpenAiLlmProvider;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -59,6 +60,7 @@ class AppServiceProvider extends ServiceProvider
 
             return match ($provider) {
                 'openai' => $app->make(OpenAiLlmProvider::class),
+                'gemini' => $app->make(GeminiLlmProvider::class),
                 default => throw new InvalidArgumentException(
                     "Unsupported LLM provider [{$provider}]."
                 ),

@@ -10,13 +10,14 @@ export function ApplicationFilters({
   onFilterChange,
   onClear,
   showScoreFilters = false,
+  forStaff = false,
 }) {
   const hasActive =
     Boolean(filters.search)
     || Boolean(filters.status)
-    || Boolean(filters.job_id)
-    || Boolean(filters.from)
-    || Boolean(filters.to)
+    || (forStaff && Boolean(filters.job_id))
+    || (forStaff && Boolean(filters.from))
+    || (forStaff && Boolean(filters.to))
     || Boolean(filters.min_score)
     || Boolean(filters.max_score)
 
@@ -27,7 +28,7 @@ export function ApplicationFilters({
         name="search"
         value={searchInput}
         onChange={(event) => onSearchChange(event.target.value)}
-        placeholder="Candidate, job, or cover letter"
+        placeholder={forStaff ? 'Candidate, job, or cover letter' : 'Search by job title'}
       />
 
       <Select
@@ -44,31 +45,35 @@ export function ApplicationFilters({
         ))}
       </Select>
 
-      <Input
-        label="Job ID"
-        name="job_id"
-        value={filters.job_id}
-        onChange={(event) => onFilterChange('job_id', event.target.value)}
-        placeholder="Optional"
-      />
+      {forStaff ? (
+        <>
+          <Input
+            label="Job ID"
+            name="job_id"
+            value={filters.job_id}
+            onChange={(event) => onFilterChange('job_id', event.target.value)}
+            placeholder="Optional"
+          />
 
-      <Input
-        label="From"
-        name="from"
-        type="date"
-        value={filters.from}
-        onChange={(event) => onFilterChange('from', event.target.value)}
-      />
+          <Input
+            label="From"
+            name="from"
+            type="date"
+            value={filters.from}
+            onChange={(event) => onFilterChange('from', event.target.value)}
+          />
 
-      <Input
-        label="To"
-        name="to"
-        type="date"
-        value={filters.to}
-        onChange={(event) => onFilterChange('to', event.target.value)}
-      />
+          <Input
+            label="To"
+            name="to"
+            type="date"
+            value={filters.to}
+            onChange={(event) => onFilterChange('to', event.target.value)}
+          />
+        </>
+      ) : null}
 
-      {showScoreFilters ? (
+      {forStaff && showScoreFilters ? (
         <>
           <Input
             label="Min match score"

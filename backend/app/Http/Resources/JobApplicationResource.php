@@ -25,6 +25,7 @@ class JobApplicationResource extends JsonResource
             'status' => $this->status?->value,
             'applied_at' => $this->applied_at,
             'job' => new JobResource($this->whenLoaded('job')),
+            'resume_document' => new AiDocumentResource($this->whenLoaded('resumeDocument')),
             'candidate' => $this->whenLoaded('candidate', function () {
                 return [
                     'id' => $this->candidate->id,

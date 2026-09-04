@@ -20,7 +20,7 @@ export function ApplicationCard({ application, basePath, forStaff }) {
         </div>
         <ApplicationStatusBadge status={application.status} />
       </div>
-      {application.job_match?.score != null ? (
+      {forStaff && application.job_match?.score != null ? (
         <p className="muted">Match score: {application.job_match.score}</p>
       ) : null}
       <Link className="text-link" to={`${basePath}/applications/${application.id}`}>
@@ -40,7 +40,7 @@ export function ApplicationTable({ applications, basePath, forStaff }) {
             {forStaff ? <th scope="col">Candidate</th> : null}
             <th scope="col">Status</th>
             <th scope="col">Applied</th>
-            <th scope="col">Match</th>
+            {forStaff ? <th scope="col">Match</th> : null}
             <th scope="col">Updated</th>
             <th scope="col">Actions</th>
           </tr>
@@ -58,7 +58,7 @@ export function ApplicationTable({ applications, basePath, forStaff }) {
                 <ApplicationStatusBadge status={application.status} />
               </td>
               <td>{formatJobDate(application.applied_at)}</td>
-              <td>{application.job_match?.score ?? '—'}</td>
+              {forStaff ? <td>{application.job_match?.score ?? '—'}</td> : null}
               <td>{formatJobDate(application.updated_at)}</td>
               <td>
                 <Link className="text-link" to={`${basePath}/applications/${application.id}`}>

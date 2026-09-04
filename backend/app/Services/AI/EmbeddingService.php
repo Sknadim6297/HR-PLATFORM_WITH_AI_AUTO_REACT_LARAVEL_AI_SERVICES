@@ -38,6 +38,7 @@ class EmbeddingService
 
         return match ($provider) {
             'openai' => $this->embedWithOpenAi($text, $model),
+            'gemini' => $this->embedWithGemini($text, $model),
             default => throw new EmbeddingException(
                 "Unsupported embedding provider [{$provider}].",
                 retryable: false,
@@ -120,6 +121,87 @@ class EmbeddingService
         }
 
         $embedding = data_get($response->json(), 'data.0.embedding');
+
+        return $this->validateEmbeddingVector($embedding);
+    }
+
+    /**
+     * @return list<float|int>
+     */
+    private function embedWithGemini(string $text, string $model): array
+    {
+        $apiKey = config('services.gemini.key');
+
+        if (! is_string($apiKey) || $apiKey === '') {
+            throw new EmbeddingException(
+                'Gemini API key is not configured.',
+                retryable: false,
+            );
+        }
+
+        $url = sprintf(
+            'https://generativelanguage.googleapis.com/v1beta/models/%s:embedContent',
+            rawurlencode($model),
+        );
+
+        try {
+            $response = Http::withHeaders([
+                'x-goog-api-key' => $apiKey,
+            ])
+                ->acceptJson()
+                ->timeout(30)
+                ->connectTimeout(10)
+                ->post($url, [
+                    'model' => 'models/'.$model,
+                    'content' => [
+                        'parts' => [
+                            ['text' => $text],
+                        ],
+                    ],
+                    'taskType' => 'RETRIEVAL_DOCUMENT',
+                ]);
+        } catch (ConnectionException $exception) {
+            $this->logFailure('Embedding provider connection failed.', $exception, [
+                'provider' => 'gemini',
+                'model' => $model,
+            ]);
+
+            throw new EmbeddingException(
+                'The embedding service is temporarily unavailable.',
+                retryable: true,
+                previous: $exception,
+            );
+        } catch (Throwable $exception) {
+            $this->logFailure('Embedding provider request crashed.', $exception, [
+                'provider' => 'gemini',
+                'model' => $model,
+            ]);
+
+            throw new EmbeddingException(
+                'The embedding service is temporarily unavailable.',
+                retryable: true,
+                previous: $exception,
+            );
+        }
+
+        if ($response->failed()) {
+            $status = $response->status();
+            $retryable = $status === 429 || $status >= 500;
+
+            $this->logFailure('Embedding provider request failed.', null, [
+                'provider' => 'gemini',
+                'model' => $model,
+                'status' => $status,
+                'error' => $response->json('error.message'),
+            ]);
+
+            throw new EmbeddingException(
+                'The embedding service is temporarily unavailable.',
+                retryable: $retryable,
+            );
+        }
+
+        $embedding = data_get($response->json(), 'embedding.values');
 
         return $this->validateEmbeddingVector($embedding);
     }

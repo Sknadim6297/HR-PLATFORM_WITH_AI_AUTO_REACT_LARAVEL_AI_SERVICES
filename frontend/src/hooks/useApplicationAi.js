@@ -47,21 +47,34 @@ export function useApplicationAi(application, { refreshApplication, enabled = tr
       setResumeDocument(null)
       return null
     }
+
+    // Prefer document payload already embedded on the application (avoids extra 404s).
+    if (application?.resume_document?.id === docId && application.resume_document.status) {
+      setResumeDocument(application.resume_document)
+      setDocumentError('')
+      // Still refresh from API when staff need live processing status.
+    }
+
     try {
       const response = await aiApi.getDocument(docId)
       setResumeDocument(response.data)
       setDocumentError('')
       return response.data
     } catch (err) {
+      if (application?.resume_document?.id === docId) {
+        setResumeDocument(application.resume_document)
+        setDocumentError('')
+        return application.resume_document
+      }
       setResumeDocument(null)
       setDocumentError(
-        err.normalized?.status === 403
-          ? "You don't have permission to view this resume document."
+        err.normalized?.status === 403 || err.normalized?.status === 404
+          ? 'Resume document is not available for this account.'
           : err.normalized?.message || 'Unable to load resume document status.',
       )
       return null
     }
-  }, [application?.resume_document_id, enabled])
+  }, [application?.resume_document_id, application?.resume_document, enabled])
 
   useEffect(() => {
     if (!enabled || !application?.resume_document_id) {

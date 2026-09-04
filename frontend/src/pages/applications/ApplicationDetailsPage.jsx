@@ -1,6 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
 import { AiAssessmentCard } from '../../components/ai/AiAssessmentCard'
-import { CandidateApplicationAiSection } from '../../components/ai/CandidateApplicationAiSection'
 import { ApplicationActions } from '../../components/applications/ApplicationActions'
 import { ApplicationResumeSection } from '../../components/applications/ApplicationResumeSection'
 import { ApplicationStatusBadge } from '../../components/applications/ApplicationStatusBadge'
@@ -39,9 +38,11 @@ export function ApplicationDetailsPage({ basePath, forStaff = false }) {
   const toast = useToast()
   const { application, setApplication, loading, error, status, refresh } = useApplication(id)
   const hasResume = Boolean(application?.resume_document_id)
+
+  // AI assessment is HR/Admin only — candidates only track application status.
   const ai = useApplicationAi(application, {
     refreshApplication: refresh,
-    enabled: Boolean(application) && (forStaff || hasResume),
+    enabled: Boolean(application) && forStaff,
   })
 
   async function handleScreening() {
@@ -140,19 +141,17 @@ export function ApplicationDetailsPage({ basePath, forStaff = false }) {
             </Card>
           ) : null}
 
-          {!forStaff ? (
-            <ApplicationResumeSection
-              hasResume={hasResume}
-              document={ai.document}
-              documentLoading={ai.documentLoading}
-              documentError={ai.documentError}
-            />
-          ) : null}
+          {!forStaff ? <ApplicationResumeSection hasResume={hasResume} /> : null}
         </div>
 
         <div className="stack-gap">
           <Card title="Status">
             <ApplicationTimeline status={application.status} />
+            {!forStaff ? (
+              <p className="muted" style={{ marginTop: '0.75rem' }}>
+                HR updates this status as they review your application.
+              </p>
+            ) : null}
           </Card>
 
           {forStaff ? (
@@ -237,14 +236,6 @@ export function ApplicationDetailsPage({ basePath, forStaff = false }) {
           screeningError={ai.screeningError}
           onRefresh={ai.refresh}
           onRunScreening={handleScreening}
-        />
-      ) : hasResume ? (
-        <CandidateApplicationAiSection
-          analysis={ai.analysis}
-          match={ai.match}
-          uiState={ai.uiState}
-          isProcessing={ai.isProcessing}
-          onRefresh={ai.refresh}
         />
       ) : null}
     </div>

@@ -19,6 +19,10 @@ export function AiScreeningCard({
   const [confirmOpen, setConfirmOpen] = useState(false)
   const ready = analysisReady && matchReady
 
+  if (!ready && !screening) {
+    return null
+  }
+
   async function confirmRun() {
     try {
       await onRun?.()
@@ -33,12 +37,6 @@ export function AiScreeningCard({
       <Alert tone="info">
         AI screening is advisory and does not make the hiring decision. Final status changes require HR or Admin action.
       </Alert>
-
-      {!ready ? (
-        <p className="muted">
-          Resume analysis and job match are required before AI screening can run.
-        </p>
-      ) : null}
 
       {canRun ? (
         <Button

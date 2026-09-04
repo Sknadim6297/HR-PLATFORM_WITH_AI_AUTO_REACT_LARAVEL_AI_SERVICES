@@ -7,6 +7,7 @@ use App\Http\Requests\AiDocumentUploadRequest;
 use App\Http\Resources\AiDocumentResource;
 use App\Jobs\ProcessAiDocument;
 use App\Models\AiDocument;
+use App\Models\JobApplication;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -77,7 +78,19 @@ class AiDocumentController extends Controller
 
     public function show(Request $request, int $id): JsonResponse|AiDocumentResource
     {
-        $document = $request->user()->aiDocuments()->withCount('chunks')->find($id);
+        $user = $request->user();
+        $document = $user->aiDocuments()->withCount('chunks')->find($id);
+
+        // HR/Admin may view resumes attached to applications (owned by candidates).
+        if ($document === null && ($user->isAdmin() || $user->isHr())) {
+            $attachedToApplication = JobApplication::query()
+                ->where('resume_document_id', $id)
+                ->exists();
+
+            if ($attachedToApplication) {
+                $document = AiDocument::query()->withCount('chunks')->find($id);
+            }
+        }
 
         if ($document === null) {
             return response()->json([
