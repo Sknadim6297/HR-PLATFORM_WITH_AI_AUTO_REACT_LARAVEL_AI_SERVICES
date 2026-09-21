@@ -99,7 +99,8 @@ Approved workflows only (no arbitrary webhook URLs from clients). Events are rec
 
 See `.env.example` for:
 
-- `OPENAI_API_KEY`, `OPENAI_MODEL`
+- `GEMINI_API_KEY`, `GEMINI_MODEL`
+- `AI_EMBEDDING_PROVIDER`, `AI_EMBEDDING_MODEL`, `AI_LLM_PROVIDER`
 - `AI_*` embedding/RAG settings
 - `N8N_ENABLED`, `N8N_BASE_URL`, workflow path mappings
 

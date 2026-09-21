@@ -7,11 +7,13 @@ use App\Enums\ApplicationStatus;
 use App\Enums\JobStatus;
 use App\Exceptions\LlmProviderException;
 use App\Jobs\AnalyzeCandidateResume;
+use App\Jobs\AutoScreenApplication;
 use App\Jobs\TriggerN8nWorkflow;
 use App\Models\AiDocument;
 use App\Models\AiDocumentChunk;
 use App\Models\AiJobMatch;
 use App\Models\AiResumeAnalysis;
+use App\Models\AiScreeningAssessment;
 use App\Models\AuditLog;
 use App\Models\AutomationEvent;
 use App\Models\CandidateProfile;
@@ -21,6 +23,10 @@ use App\Models\User;
 use App\Services\AI\JobMatchingService;
 use App\Services\AI\ResumeAnalysisService;
 use App\Services\Automation\N8nService;
+use App\Services\Audit\AuditLogger;
+use App\Services\Recruitment\ApplicationStatusService;
+use App\Services\AI\AiScreeningService;
+use App\Notifications\ApplicationStatusNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
@@ -37,6 +43,8 @@ class RecruitmentDomainTest extends TestCase
         parent::setUp();
 
         config([
+            'ai.embeddings.provider' => 'openai',
+            'ai.llm.provider' => 'openai',
             'services.openai.key' => 'test-openai-key',
             'services.openai.model' => 'gpt-4.1-mini',
             'automation.enabled' => false,
@@ -271,6 +279,19 @@ class RecruitmentDomainTest extends TestCase
                             ], JSON_THROW_ON_ERROR),
                         ],
                     ]],
+                ], 200)
+                ->push([
+                    'model' => 'gpt-4.1-mini',
+                    'choices' => [[
+                        'message' => [
+                            'content' => json_encode([
+                                'recommendation' => 'shortlist',
+                                'score' => 87,
+                                'reasoning' => 'Strong overlap with requirements.',
+                                'confidence' => 'high',
+                            ], JSON_THROW_ON_ERROR),
+                        ],
+                    ]],
                 ], 200),
         ]);
 
@@ -390,6 +411,93 @@ class RecruitmentDomainTest extends TestCase
 
         $application->refresh();
         $this->assertSame(ApplicationStatus::Applied, $application->status);
+    }
+
+    public function test_automatic_screening_classifies_and_notifies_candidates(): void
+    {
+        Http::fake([
+            'api.openai.com/v1/chat/completions' => Http::sequence()
+                ->push(['choices' => [['message' => ['content' => json_encode([
+                    'recommendation' => 'shortlist',
+                    'score' => 92,
+                    'reasoning' => 'Strong fit.',
+                    'confidence' => 'high',
+                ], JSON_THROW_ON_ERROR)]]]], 200)
+                ->push(['choices' => [['message' => ['content' => json_encode([
+                    'recommendation' => 'reject',
+                    'score' => 18,
+                    'reasoning' => 'Insufficient evidence.',
+                    'confidence' => 'high',
+                ], JSON_THROW_ON_ERROR)]]]], 200),
+        ]);
+
+        Notification::fake();
+        $proceed = $this->applicationWithAnalysisAndMatch();
+        $reject = $this->applicationWithAnalysisAndMatch();
+
+        foreach ([$proceed, $reject] as $application) {
+            (new AutoScreenApplication($application->id))->handle(
+                app(AiScreeningService::class),
+                app(ApplicationStatusService::class),
+                app(AuditLogger::class),
+            );
+        }
+
+        $proceed->refresh();
+        $reject->refresh();
+
+        $this->assertSame(ApplicationStatus::Shortlisted, $proceed->status);
+        $this->assertSame(ApplicationStatus::Rejected, $reject->status);
+        $this->assertSame(92, $proceed->aiScreeningAssessment->score);
+        $this->assertSame(18, $reject->aiScreeningAssessment->score);
+        Notification::assertSentTo($reject->candidate, ApplicationStatusNotification::class);
+    }
+
+    public function test_manual_selection_is_authorized_explicit_and_emailed(): void
+    {
+        Notification::fake();
+        $application = $this->applicationWithAnalysisAndMatch();
+        $application->forceFill(['status' => ApplicationStatus::Interview])->save();
+
+        Sanctum::actingAs($application->job->creator);
+        $this->patchJson("/api/applications/{$application->id}/status", [
+            'status' => ApplicationStatus::Selected->value,
+        ])->assertOk();
+
+        $this->assertSame(ApplicationStatus::Selected, $application->fresh()->status);
+        Notification::assertSentTo($application->candidate, ApplicationStatusNotification::class);
+        $this->assertDatabaseHas('audit_logs', [
+            'auditable_id' => $application->id,
+            'action' => 'application.status_changed',
+        ]);
+    }
+
+    public function test_staff_can_sort_applications_by_screening_score(): void
+    {
+        $hr = User::factory()->hr()->create();
+        $first = $this->applicationWithAnalysisAndMatch();
+        $second = $this->applicationWithAnalysisAndMatch();
+        AiScreeningAssessment::query()->create([
+            'application_id' => $first->id,
+            'recommendation' => 'shortlist',
+            'score' => 55,
+            'confidence' => 'medium',
+            'screened_at' => now(),
+        ]);
+        AiScreeningAssessment::query()->create([
+            'application_id' => $second->id,
+            'recommendation' => 'shortlist',
+            'score' => 95,
+            'confidence' => 'high',
+            'screened_at' => now(),
+        ]);
+
+        Sanctum::actingAs($hr);
+        $response = $this->getJson('/api/applications?sort=screening_score&direction=desc');
+
+        $response->assertOk();
+        $ids = array_column($response->json('data'), 'id');
+        $this->assertLessThan(array_search($first->id, $ids, true), array_search($second->id, $ids, true));
     }
 
     public function test_automation_event_idempotency(): void

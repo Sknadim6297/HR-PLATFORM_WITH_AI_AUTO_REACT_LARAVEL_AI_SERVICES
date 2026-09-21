@@ -11,6 +11,7 @@ use App\Http\Resources\JobApplicationResource;
 use App\Models\Job;
 use App\Models\JobApplication;
 use App\Services\AI\AiScreeningService;
+use App\Services\Audit\AuditLogger;
 use App\Services\Recruitment\ApplicationService;
 use App\Services\Recruitment\ApplicationStatusService;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -26,6 +27,7 @@ class JobApplicationController extends Controller
         private readonly ApplicationService $applicationService,
         private readonly ApplicationStatusService $statusService,
         private readonly AiScreeningService $screeningService,
+        private readonly AuditLogger $auditLogger,
     ) {}
 
     public function store(StoreApplicationRequest $request, Job $job): JsonResponse
@@ -59,7 +61,7 @@ class JobApplicationController extends Controller
         $this->authorize('viewAny', JobApplication::class);
 
         $applications = $this->applicationService->listForUser($request->user(), $request->only([
-            'status', 'job_id', 'candidate_id', 'min_score', 'max_score', 'from', 'to', 'search', 'per_page',
+            'status', 'job_id', 'candidate_id', 'min_score', 'max_score', 'from', 'to', 'search', 'sort', 'direction', 'per_page',
         ]));
 
         return JobApplicationResource::collection($applications)->additional(['success' => true]);
@@ -75,7 +77,7 @@ class JobApplicationController extends Controller
         }
 
         $applications = $this->applicationService->listForJob($request->user(), $job, $request->only([
-            'status', 'candidate_id', 'min_score', 'max_score', 'from', 'to', 'search', 'per_page',
+            'status', 'candidate_id', 'min_score', 'max_score', 'from', 'to', 'search', 'sort', 'direction', 'per_page',
         ]));
 
         return JobApplicationResource::collection($applications)->additional(['success' => true]);
@@ -147,7 +149,13 @@ class JobApplicationController extends Controller
         }
 
         try {
-            $result = $this->screeningService->screen($application);
+            $assessment = $this->screeningService->screenAndPersist($application);
+            $this->auditLogger->log($request->user(), $application, 'application.ai_screened', null, [
+                'recommendation' => $assessment->recommendation,
+                'score' => $assessment->score,
+                'confidence' => $assessment->confidence,
+                'model' => $assessment->model,
+            ]);
         } catch (LlmProviderException $exception) {
             return response()->json([
                 'success' => false,
@@ -159,7 +167,13 @@ class JobApplicationController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $result,
+            'data' => [
+                'recommendation' => $assessment->recommendation,
+                'score' => $assessment->score,
+                'reasoning' => $assessment->reasoning,
+                'confidence' => $assessment->confidence,
+                'screened_at' => $assessment->screened_at,
+            ],
             'meta' => [
                 'decision_support_only' => true,
                 'message' => 'AI screening is advisory. Final hiring decisions require authorized HR/Admin action.',

@@ -67,6 +67,52 @@ class ApplicationStatusService
                 'candidate:id,name,email',
                 'resumeAnalysis',
                 'jobMatch',
+                'aiScreeningAssessment',
+            ]) ?? $application;
+        });
+
+        $this->dispatchDomainEvents($updated, $next);
+
+        return $updated;
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     */
+    public function transitionAutomatically(
+        JobApplication $application,
+        ApplicationStatus $next,
+        array $metadata = [],
+    ): JobApplication {
+        $current = $application->status;
+
+        $automaticTransitionAllowed = $current === ApplicationStatus::Applied
+            && in_array($next, [
+                ApplicationStatus::Screening,
+                ApplicationStatus::Shortlisted,
+                ApplicationStatus::Interview,
+                ApplicationStatus::Rejected,
+            ], true);
+
+        if (! $current->canTransitionTo($next) && ! $automaticTransitionAllowed) {
+            return $application;
+        }
+
+        $updated = DB::transaction(function () use ($application, $current, $next, $metadata): JobApplication {
+            $application->forceFill(['status' => $next])->save();
+
+            $this->auditLogger->log(null, $application, 'application.ai_status_changed', [
+                'status' => $current->value,
+            ], [
+                'status' => $next->value,
+            ], $metadata);
+
+            return $application->fresh([
+                'job.creator:id,name,email',
+                'candidate:id,name,email',
+                'resumeAnalysis',
+                'jobMatch',
+                'aiScreeningAssessment',
             ]) ?? $application;
         });
 

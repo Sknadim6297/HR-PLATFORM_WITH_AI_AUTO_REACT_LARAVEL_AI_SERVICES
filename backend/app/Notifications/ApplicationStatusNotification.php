@@ -6,6 +6,7 @@ use App\Models\JobApplication;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
+use Illuminate\Notifications\Messages\MailMessage;
 
 class ApplicationStatusNotification extends Notification implements ShouldQueue
 {
@@ -22,7 +23,20 @@ class ApplicationStatusNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'mail'];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        $subject = $this->event === 'application.selected'
+            ? 'Application selected'
+            : 'Application update';
+
+        return (new MailMessage)
+            ->subject($subject)
+            ->greeting('Hello '.$notifiable->name.',')
+            ->line($this->message)
+            ->line('Application #'.$this->application->id.' status: '.$this->application->status->value.'.');
     }
 
     /**

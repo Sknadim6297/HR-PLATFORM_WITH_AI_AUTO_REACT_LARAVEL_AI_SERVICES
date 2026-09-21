@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Enums\AutomationWorkflow;
 use App\Events\JobMatchGenerated;
+use App\Jobs\AutoScreenApplication;
 use App\Jobs\TriggerN8nWorkflow;
 use App\Notifications\HighMatchCandidateNotification;
 
@@ -12,6 +13,7 @@ class HandleJobMatchGenerated
     public function handle(JobMatchGenerated $event): void
     {
         $application = $event->application->loadMissing(['job.creator', 'jobMatch']);
+        AutoScreenApplication::dispatch($application->id);
         $threshold = (int) config('automation.high_match_score', 80);
         $score = (int) ($application->jobMatch?->score ?? 0);
 

@@ -9,6 +9,8 @@ use App\Events\ApplicationSubmitted;
 use App\Exceptions\OwnedResourceNotFoundException;
 use App\Jobs\AnalyzeCandidateResume;
 use App\Models\AiDocument;
+use App\Models\AiJobMatch;
+use App\Models\AiScreeningAssessment;
 use App\Models\Job;
 use App\Models\JobApplication;
 use App\Models\User;
@@ -95,6 +97,7 @@ class ApplicationService
                 'candidate:id,name,email',
                 'jobMatch:id,application_id,score,confidence',
                 'resumeAnalysis:id,application_id,confidence,analyzed_at',
+                'aiScreeningAssessment:id,application_id,recommendation,score,confidence,screened_at',
             ]);
 
         if ($user->isCandidate()) {
@@ -140,7 +143,27 @@ class ApplicationService
             });
         }
 
-        return $query->latest('applied_at')->paginate((int) Arr::get($filters, 'per_page', 15));
+        $sort = Arr::get($filters, 'sort', 'applied_at');
+        $direction = Arr::get($filters, 'direction', 'desc') === 'asc' ? 'asc' : 'desc';
+
+        match ($sort) {
+            'screening_score' => $query->orderBy(
+                AiScreeningAssessment::query()
+                    ->select('score')
+                    ->whereColumn('application_id', 'job_applications.id'),
+                $direction,
+            ),
+            'match_score' => $query->orderBy(
+                AiJobMatch::query()
+                    ->select('score')
+                    ->whereColumn('application_id', 'job_applications.id'),
+                $direction,
+            ),
+            'updated_at' => $query->orderBy('updated_at', $direction),
+            default => $query->orderBy('applied_at', $direction),
+        };
+
+        return $query->orderByDesc('job_applications.id')->paginate((int) Arr::get($filters, 'per_page', 15));
     }
 
     public function listForJob(User $user, Job $job, array $filters = []): LengthAwarePaginator
@@ -160,6 +183,7 @@ class ApplicationService
                 'resumeDocument' => fn ($query) => $query->withCount('chunks'),
                 'resumeAnalysis',
                 'jobMatch',
+                'aiScreeningAssessment',
             ])
             ->whereKey($applicationId);
 

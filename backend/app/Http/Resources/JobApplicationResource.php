@@ -38,6 +38,16 @@ class JobApplicationResource extends JsonResource
             }),
             'resume_analysis' => new ResumeAnalysisResource($this->whenLoaded('resumeAnalysis')),
             'job_match' => new JobMatchResource($this->whenLoaded('jobMatch')),
+            'ai_screening' => $this->whenLoaded('aiScreeningAssessment', function () {
+                return [
+                    'id' => $this->aiScreeningAssessment->id,
+                    'recommendation' => $this->aiScreeningAssessment->recommendation,
+                    'score' => $this->aiScreeningAssessment->score,
+                    'reasoning' => $this->aiScreeningAssessment->reasoning,
+                    'confidence' => $this->aiScreeningAssessment->confidence,
+                    'screened_at' => $this->aiScreeningAssessment->screened_at,
+                ];
+            }),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

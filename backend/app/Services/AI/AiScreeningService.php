@@ -5,6 +5,7 @@ namespace App\Services\AI;
 use App\Contracts\AI\LlmProviderInterface;
 use App\Enums\ScreeningRecommendation;
 use App\Exceptions\LlmProviderException;
+use App\Models\AiScreeningAssessment;
 use App\Models\JobApplication;
 use Illuminate\Support\Facades\Log;
 
@@ -83,6 +84,22 @@ PROMPT;
         ]);
 
         return $result;
+    }
+
+    public function screenAndPersist(JobApplication $application): AiScreeningAssessment
+    {
+        $result = $this->screen($application);
+
+        return AiScreeningAssessment::query()->updateOrCreate(
+            ['application_id' => $application->id],
+            [
+                ...$result,
+                'model' => config('ai.llm.provider') === 'gemini'
+                    ? config('services.gemini.model')
+                    : config('services.openai.model'),
+                'screened_at' => now(),
+            ],
+        );
     }
 
     /**

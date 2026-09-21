@@ -70,4 +70,9 @@ class JobApplication extends Model
     {
         return $this->hasOne(AiJobMatch::class, 'application_id');
     }
+
+    public function aiScreeningAssessment(): HasOne
+    {
+        return $this->hasOne(AiScreeningAssessment::class, 'application_id');
+    }
 }
