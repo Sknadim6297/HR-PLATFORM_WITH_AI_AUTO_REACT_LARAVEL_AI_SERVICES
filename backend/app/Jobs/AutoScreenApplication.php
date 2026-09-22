@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\ApplicationStatus;
+use App\Enums\AiDocumentStatus;
 use App\Enums\ScreeningRecommendation;
 use App\Exceptions\LlmProviderException;
 use App\Models\JobApplication;
@@ -51,6 +52,12 @@ class AutoScreenApplication implements ShouldQueue
                 'message' => $exception->getMessage(),
             ]);
 
+            $application->load('resumeDocument');
+            $application->resumeDocument?->forceFill([
+                'status' => AiDocumentStatus::Failed,
+                'error_message' => 'AI screening failed. Please retry AI analysis.',
+            ])->save();
+
             if ($this->job !== null) {
                 $this->fail($exception);
 
@@ -92,5 +99,11 @@ class AutoScreenApplication implements ShouldQueue
             'application_id' => $this->applicationId,
             'exception' => $exception?->getMessage(),
         ]);
+
+        $application = JobApplication::query()->with('resumeDocument')->find($this->applicationId);
+        $application?->resumeDocument?->forceFill([
+            'status' => AiDocumentStatus::Failed,
+            'error_message' => 'AI screening failed. Please retry AI analysis.',
+        ])->save();
     }
 }

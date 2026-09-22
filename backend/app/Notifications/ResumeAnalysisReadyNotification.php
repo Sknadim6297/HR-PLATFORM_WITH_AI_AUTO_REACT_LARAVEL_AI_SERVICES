@@ -28,7 +28,7 @@ class ResumeAnalysisReadyNotification extends Notification implements ShouldQueu
     {
         return [
             'event' => 'resume_analysis.completed',
-            'message' => 'Resume analysis is ready for review.',
+            'message' => 'The AI assessment report is ready for review.',
             'application_id' => $this->application->id,
             'job_id' => $this->application->job_id,
         ];

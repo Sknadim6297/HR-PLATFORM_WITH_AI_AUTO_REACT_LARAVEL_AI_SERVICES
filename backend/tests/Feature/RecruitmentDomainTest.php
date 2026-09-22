@@ -67,6 +67,32 @@ class RecruitmentDomainTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_login_token_authenticates_me(): void
+    {
+        $candidate = User::factory()->candidate()->create([
+            'email' => 'auth-test@example.com',
+            'password' => 'password',
+        ]);
+
+        $login = $this->postJson('/api/login', [
+            'email' => $candidate->email,
+            'password' => 'password',
+        ])->assertOk();
+
+        $token = $login->json('token');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/me')
+            ->assertOk()
+            ->assertJsonPath('user.id', $candidate->id);
+
+    }
+
+    public function test_me_rejects_missing_bearer_token(): void
+    {
+        $this->getJson('/api/me')->assertUnauthorized();
+    }
+
     public function test_publish_close_and_candidate_only_sees_published_jobs(): void
     {
         $hr = User::factory()->hr()->create();
@@ -341,6 +367,46 @@ class RecruitmentDomainTest extends TestCase
         $this->assertSame($analysis->id, $again->id);
         $this->assertSame(1, AiResumeAnalysis::query()->count());
         $this->assertSame(1, AiJobMatch::query()->count());
+    }
+
+    public function test_permanent_resume_analysis_failure_marks_document_failed(): void
+    {
+        Http::fake([
+            'api.openai.com/v1/embeddings' => Http::response([
+                'data' => [['embedding' => [1, 0], 'index' => 0]],
+                'model' => 'text-embedding-3-small',
+            ], 200),
+            'api.openai.com/v1/chat/completions' => Http::response([
+                'model' => 'gpt-4.1-mini',
+                'choices' => [['message' => ['content' => 'not-json']]],
+            ], 200),
+        ]);
+
+        $candidate = User::factory()->candidate()->create();
+        $hr = User::factory()->hr()->create();
+        $job = Job::factory()->for($hr, 'creator')->published()->create();
+        $document = AiDocument::factory()->create([
+            'user_id' => $candidate->id,
+            'status' => AiDocumentStatus::Completed,
+        ]);
+        AiDocumentChunk::query()->create([
+            'ai_document_id' => $document->id,
+            'chunk_index' => 0,
+            'content' => 'Resume content.',
+            'embedding' => [1, 0],
+            'embedding_model' => 'text-embedding-3-small',
+            'embedded_at' => now(),
+        ]);
+        $application = JobApplication::factory()->create([
+            'job_id' => $job->id,
+            'candidate_id' => $candidate->id,
+            'resume_document_id' => $document->id,
+        ]);
+
+        (new AnalyzeCandidateResume($application->id))->handle(app(ResumeAnalysisService::class));
+
+        $this->assertSame('failed', $document->fresh()->status->value);
+        $this->assertStringContainsString('language model', strtolower((string) $document->fresh()->error_message));
     }
 
     public function test_malformed_match_score_and_screening_are_handled(): void

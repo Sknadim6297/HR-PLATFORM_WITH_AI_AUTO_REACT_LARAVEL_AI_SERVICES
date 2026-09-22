@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\AiDocumentStatus;
 use App\Exceptions\DocumentChunkingException;
+use App\Events\AiDocumentCompleted;
 use App\Models\AiDocument;
 use App\Services\AI\DocumentChunker;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -134,7 +135,7 @@ class ProcessAiDocumentChunks implements ShouldQueue
             ->pluck('id');
 
         if ($chunkIds->isEmpty()) {
-            AiDocument::query()
+            $updated = AiDocument::query()
                 ->whereKey($document->id)
                 ->where('status', AiDocumentStatus::Processing->value)
                 ->whereHas('chunks')
@@ -147,6 +148,13 @@ class ProcessAiDocumentChunks implements ShouldQueue
                     'error_message' => null,
                     'updated_at' => now(),
                 ]);
+
+            if ($updated > 0) {
+                $completed = AiDocument::query()->find($document->id);
+                if ($completed !== null) {
+                    AiDocumentCompleted::dispatch($completed);
+                }
+            }
 
             return;
         }

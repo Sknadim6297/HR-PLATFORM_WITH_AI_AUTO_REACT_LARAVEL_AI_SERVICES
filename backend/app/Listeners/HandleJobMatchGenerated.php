@@ -7,12 +7,14 @@ use App\Events\JobMatchGenerated;
 use App\Jobs\AutoScreenApplication;
 use App\Jobs\TriggerN8nWorkflow;
 use App\Notifications\HighMatchCandidateNotification;
+use App\Notifications\ResumeAnalysisReadyNotification;
 
 class HandleJobMatchGenerated
 {
     public function handle(JobMatchGenerated $event): void
     {
         $application = $event->application->loadMissing(['job.creator', 'jobMatch']);
+        $application->job?->creator?->notify(new ResumeAnalysisReadyNotification($application));
         AutoScreenApplication::dispatch($application->id);
         $threshold = (int) config('automation.high_match_score', 80);
         $score = (int) ($application->jobMatch?->score ?? 0);

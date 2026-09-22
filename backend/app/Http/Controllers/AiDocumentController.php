@@ -78,19 +78,7 @@ class AiDocumentController extends Controller
 
     public function show(Request $request, int $id): JsonResponse|AiDocumentResource
     {
-        $user = $request->user();
-        $document = $user->aiDocuments()->withCount('chunks')->find($id);
-
-        // HR/Admin may view resumes attached to applications (owned by candidates).
-        if ($document === null && ($user->isAdmin() || $user->isHr())) {
-            $attachedToApplication = JobApplication::query()
-                ->where('resume_document_id', $id)
-                ->exists();
-
-            if ($attachedToApplication) {
-                $document = AiDocument::query()->withCount('chunks')->find($id);
-            }
-        }
+        $document = $this->accessibleDocument($request, $id);
 
         if ($document === null) {
             return response()->json([
@@ -99,10 +87,76 @@ class AiDocumentController extends Controller
             ], Response::HTTP_NOT_FOUND);
         }
 
-        return (new AiDocumentResource($document))
+        if ($this->isStale($document)) {
+            $document->forceFill([
+                'status' => AiDocumentStatus::Failed,
+                'error_message' => 'AI processing timed out. Retry the analysis to try again.',
+            ])->save();
+        }
+
+        return (new AiDocumentResource($document->fresh()->loadCount('chunks')))
             ->additional([
                 'success' => true,
             ]);
+    }
+
+    public function retry(Request $request, int $id): JsonResponse|AiDocumentResource
+    {
+        $document = $this->accessibleDocument($request, $id);
+
+        if ($document === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Document not found.',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        if (in_array($document->status, [
+            AiDocumentStatus::Uploaded,
+            AiDocumentStatus::Processing,
+        ], true) && ! $this->isStale($document)) {
+            return (new AiDocumentResource($document->loadCount('chunks')))
+                ->additional(['success' => true]);
+        }
+
+        $document->forceFill([
+            'status' => AiDocumentStatus::Uploaded,
+            'error_message' => null,
+        ])->save();
+
+        ProcessAiDocument::dispatch($document->id);
+
+        return (new AiDocumentResource($document->fresh()->loadCount('chunks')))
+            ->additional([
+                'success' => true,
+                'message' => 'AI processing has been queued for retry.',
+            ]);
+    }
+
+    private function accessibleDocument(Request $request, int $id): ?AiDocument
+    {
+        $user = $request->user();
+        $document = $user->aiDocuments()->withCount('chunks')->find($id);
+
+        if ($document === null && ($user->isAdmin() || $user->isHr())) {
+            $document = JobApplication::query()
+                ->where('resume_document_id', $id)
+                ->exists()
+                ? AiDocument::query()->withCount('chunks')->find($id)
+                : null;
+        }
+
+        return $document;
+    }
+
+    private function isStale(AiDocument $document): bool
+    {
+        return in_array($document->status, [
+            AiDocumentStatus::Uploaded,
+            AiDocumentStatus::Processing,
+        ], true) && $document->updated_at?->lte(
+            now()->subMinutes((int) config('ai.processing_timeout_minutes', 10))
+        );
     }
 
     private function generatedFilename(UploadedFile $file): string

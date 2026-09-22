@@ -2,6 +2,8 @@
 
 return [
 
+    'processing_timeout_minutes' => (int) env('AI_PROCESSING_TIMEOUT_MINUTES', 10),
+
     /*
     |--------------------------------------------------------------------------
     | Document Chunking

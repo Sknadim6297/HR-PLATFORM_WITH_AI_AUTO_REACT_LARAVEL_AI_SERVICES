@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Exceptions\LlmProviderException;
+use App\Enums\AiDocumentStatus;
 use App\Models\JobApplication;
 use App\Services\AI\JobMatchingService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -44,6 +45,8 @@ class GenerateJobMatch implements ShouldQueue
                 'application_id' => $application->id,
             ]);
 
+            $this->release(30);
+
             return;
         }
 
@@ -58,6 +61,12 @@ class GenerateJobMatch implements ShouldQueue
                 'application_id' => $application->id,
                 'message' => $exception->getMessage(),
             ]);
+
+            $this->markDocumentFailed($exception->getMessage());
+
+            if ($this->job !== null) {
+                $this->fail($exception);
+            }
         }
     }
 
@@ -67,5 +76,16 @@ class GenerateJobMatch implements ShouldQueue
             'application_id' => $this->applicationId,
             'exception' => $exception?->getMessage(),
         ]);
+
+        $this->markDocumentFailed('Job matching failed. Please retry AI analysis.');
+    }
+
+    private function markDocumentFailed(string $message): void
+    {
+        $application = JobApplication::query()->with('resumeDocument')->find($this->applicationId);
+        $application?->resumeDocument?->forceFill([
+            'status' => AiDocumentStatus::Failed,
+            'error_message' => $message,
+        ])->save();
     }
 }

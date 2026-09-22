@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Enums\AiDocumentStatus;
+use App\Enums\ApplicationStatus;
 use App\Jobs\ProcessAiDocument;
 use App\Models\AiDocument;
+use App\Models\Job;
+use App\Models\JobApplication;
 use App\Models\User;
 use App\Services\AI\DocumentTextExtractor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -318,5 +321,56 @@ class AiDocumentTest extends TestCase
         $this->assertStringNotContainsString($path, (string) $document->error_message);
         $this->assertStringNotContainsString('stack', strtolower((string) $document->error_message));
         $this->assertNull($document->extracted_text);
+    }
+
+    public function test_hr_can_retry_an_attached_failed_document(): void
+    {
+        Queue::fake();
+        $candidate = User::factory()->candidate()->create();
+        $hr = User::factory()->hr()->create();
+        $job = Job::factory()->for($hr, 'creator')->published()->create();
+        $document = AiDocument::factory()->create([
+            'user_id' => $candidate->id,
+            'status' => AiDocumentStatus::Failed,
+            'error_message' => 'Previous AI failure.',
+        ]);
+        JobApplication::factory()->create([
+            'job_id' => $job->id,
+            'candidate_id' => $candidate->id,
+            'resume_document_id' => $document->id,
+            'status' => ApplicationStatus::Applied,
+        ]);
+
+        Sanctum::actingAs($hr);
+        $this->postJson("/api/ai/documents/{$document->id}/retry")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'uploaded');
+
+        $this->postJson("/api/ai/documents/{$document->id}/retry")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'uploaded');
+
+        Queue::assertPushed(ProcessAiDocument::class, 1);
+        $this->assertDatabaseHas('ai_documents', [
+            'id' => $document->id,
+            'status' => 'uploaded',
+            'error_message' => null,
+        ]);
+    }
+
+    public function test_stale_document_is_marked_failed_when_status_is_polled(): void
+    {
+        $candidate = User::factory()->candidate()->create();
+        $document = AiDocument::factory()->create([
+            'user_id' => $candidate->id,
+            'status' => AiDocumentStatus::Processing,
+            'updated_at' => now()->subMinutes(11),
+        ]);
+
+        Sanctum::actingAs($candidate);
+        $this->getJson("/api/ai/documents/{$document->id}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'failed')
+            ->assertJsonPath('data.error_message', 'AI processing timed out. Retry the analysis to try again.');
     }
 }

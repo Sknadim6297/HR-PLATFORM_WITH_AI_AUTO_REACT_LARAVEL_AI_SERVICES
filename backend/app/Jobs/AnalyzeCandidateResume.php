@@ -50,6 +50,8 @@ class AnalyzeCandidateResume implements ShouldQueue
                 'document_id' => $application->resume_document_id,
             ]);
 
+            $this->release(30);
+
             return;
         }
 
@@ -64,6 +66,12 @@ class AnalyzeCandidateResume implements ShouldQueue
                 'application_id' => $application->id,
                 'message' => $exception->getMessage(),
             ]);
+
+            $this->markDocumentFailed($exception->getMessage());
+
+            if ($this->job !== null) {
+                $this->fail($exception);
+            }
         }
     }
 
@@ -73,5 +81,16 @@ class AnalyzeCandidateResume implements ShouldQueue
             'application_id' => $this->applicationId,
             'exception' => $exception?->getMessage(),
         ]);
+
+        $this->markDocumentFailed('Resume analysis failed. Please retry AI analysis.');
+    }
+
+    private function markDocumentFailed(string $message): void
+    {
+        $application = JobApplication::query()->with('resumeDocument')->find($this->applicationId);
+        $application?->resumeDocument?->forceFill([
+            'status' => AiDocumentStatus::Failed,
+            'error_message' => $message,
+        ])->save();
     }
 }

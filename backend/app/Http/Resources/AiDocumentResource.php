@@ -22,6 +22,7 @@ class AiDocumentResource extends JsonResource
             'mime_type' => $this->mime_type,
             'file_size' => $this->file_size,
             'status' => $this->status->value,
+            'error_message' => $this->error_message,
             'chunk_count' => (int) ($this->chunks_count ?? 0),
             'created_at' => $this->created_at,
             'processed_at' => $this->processed_at,

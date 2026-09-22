@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/ai/documents', [AiDocumentController::class, 'store'])->middleware('throttle:ai');
     Route::get('/ai/documents', [AiDocumentController::class, 'index']);
     Route::get('/ai/documents/{id}', [AiDocumentController::class, 'show']);
+    Route::post('/ai/documents/{id}/retry', [AiDocumentController::class, 'retry']);
 
     Route::post('/ai/search', AiSearchController::class)->middleware('throttle:ai');
     Route::post('/ai/ask', AiRagController::class)->middleware('throttle:ai');
