@@ -10,6 +10,11 @@ export async function getDocument(id) {
   return data
 }
 
+export async function retryDocument(id) {
+  const { data } = await api.post(`/ai/documents/${id}/retry`)
+  return data
+}
+
 export async function uploadDocument(file, { onUploadProgress } = {}) {
   const formData = new FormData()
   formData.append('file', file)

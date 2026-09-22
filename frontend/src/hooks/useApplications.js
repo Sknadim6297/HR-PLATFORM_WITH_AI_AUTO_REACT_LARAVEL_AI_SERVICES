@@ -12,6 +12,8 @@ function readFilters(searchParams) {
     to: searchParams.get('to') || '',
     min_score: searchParams.get('min_score') || '',
     max_score: searchParams.get('max_score') || '',
+    sort: searchParams.get('sort') || 'applied_at',
+    direction: searchParams.get('direction') || 'desc',
     per_page: Number(searchParams.get('per_page') || 15),
   }
 }
@@ -56,6 +58,8 @@ export function useApplications() {
         if (filters.to) params.to = filters.to
         if (filters.min_score) params.min_score = filters.min_score
         if (filters.max_score) params.max_score = filters.max_score
+        if (filters.sort) params.sort = filters.sort
+        if (filters.direction) params.direction = filters.direction
 
         const response = await applicationsApi.getApplications(params)
         if (cancelled || id !== requestId.current) return
@@ -105,6 +109,10 @@ export function useApplications() {
       if (filters.job_id) params.job_id = filters.job_id
       if (filters.from) params.from = filters.from
       if (filters.to) params.to = filters.to
+      if (filters.min_score) params.min_score = filters.min_score
+      if (filters.max_score) params.max_score = filters.max_score
+      if (filters.sort) params.sort = filters.sort
+      if (filters.direction) params.direction = filters.direction
       const response = await applicationsApi.getApplications(params)
       if (id !== requestId.current) return
       setApplications(response.data || [])

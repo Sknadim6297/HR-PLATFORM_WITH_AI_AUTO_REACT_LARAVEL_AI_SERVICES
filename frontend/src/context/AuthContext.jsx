@@ -54,7 +54,9 @@ export function AuthProvider({ children }) {
           setUser(nextUser)
         }
       } catch {
-        clearToken()
+        if (getToken() === token) {
+          clearToken()
+        }
         if (!cancelled) {
           setUser(null)
         }

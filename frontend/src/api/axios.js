@@ -22,6 +22,7 @@ api.interceptors.request.use((config) => {
   const token = getToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+    config.__authToken = token
   }
 
   if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
@@ -40,7 +41,15 @@ api.interceptors.response.use(
   async (error) => {
     const normalized = normalizeApiError(error)
 
-    if (normalized.status === 401 && !error.config?.skipAuthLogout) {
+    const requestToken = error.config?.__authToken
+    const currentToken = getToken()
+
+    if (
+      normalized.status === 401
+      && requestToken
+      && requestToken === currentToken
+      && !error.config?.skipAuthLogout
+    ) {
       if (!handlingUnauthorized) {
         handlingUnauthorized = true
         clearToken()

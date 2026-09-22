@@ -30,7 +30,7 @@ export function AiErrorState({
       <p className="muted">{description}</p>
       {onRetry ? (
         <Button type="button" variant="secondary" onClick={onRetry}>
-          Refresh
+          Retry AI Analysis
         </Button>
       ) : null}
     </div>

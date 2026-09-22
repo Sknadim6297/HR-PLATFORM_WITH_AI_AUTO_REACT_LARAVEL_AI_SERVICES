@@ -41,7 +41,7 @@ export function ResumeStatus({ document }) {
       ) : null}
       {document.status === 'failed' ? (
         <p className="resume-status__note resume-status__note--err">
-          Resume processing failed. You can upload another file.
+          {document.error_message || 'Resume processing failed. Retry AI analysis.'}
         </p>
       ) : null}
     </div>

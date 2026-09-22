@@ -235,6 +235,7 @@ export function ApplicationDetailsPage({ basePath, forStaff = false }) {
           screeningLoading={ai.screeningLoading}
           screeningError={ai.screeningError}
           onRefresh={ai.refresh}
+          onRetry={ai.retry}
           onRunScreening={handleScreening}
         />
       ) : null}

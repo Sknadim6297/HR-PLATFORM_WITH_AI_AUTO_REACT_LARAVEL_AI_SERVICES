@@ -3,7 +3,7 @@ import * as aiApi from '../api/ai'
 import { deriveAiUiState } from '../constants/ai'
 
 const POLL_MS = 5000
-const MAX_POLLS = 36 // ~3 minutes
+const MAX_POLLS = 120 // ~10 minutes, aligned with the backend stale-processing timeout
 
 /**
  * Uses AI data already embedded on the application resource.
@@ -17,12 +17,17 @@ export function useApplicationAi(application, { refreshApplication, enabled = tr
   const [screeningMeta, setScreeningMeta] = useState(null)
   const [screeningLoading, setScreeningLoading] = useState(false)
   const [screeningError, setScreeningError] = useState('')
+  const [processingTimedOut, setProcessingTimedOut] = useState(false)
   const pollCount = useRef(0)
   const refreshRef = useRef(refreshApplication)
 
   useEffect(() => {
     refreshRef.current = refreshApplication
   }, [refreshApplication])
+
+  useEffect(() => {
+    setScreening(application?.ai_screening || null)
+  }, [application?.id, application?.ai_screening])
 
   const analysis = application?.resume_analysis || null
   const match = application?.job_match || null
@@ -58,6 +63,9 @@ export function useApplicationAi(application, { refreshApplication, enabled = tr
     try {
       const response = await aiApi.getDocument(docId)
       setResumeDocument(response.data)
+      if (response.data.status === 'completed' || response.data.status === 'failed') {
+        setProcessingTimedOut(false)
+      }
       setDocumentError('')
       return response.data
     } catch (err) {
@@ -127,6 +135,9 @@ export function useApplicationAi(application, { refreshApplication, enabled = tr
 
       if (!cancelled && pollCount.current < MAX_POLLS) {
         timer = window.setTimeout(poll, POLL_MS)
+      } else if (!cancelled) {
+        setProcessingTimedOut(true)
+        setDocumentError('AI processing timed out. Retry the analysis to try again.')
       }
     }
 
@@ -137,6 +148,28 @@ export function useApplicationAi(application, { refreshApplication, enabled = tr
       window.clearTimeout(timer)
     }
   }, [enabled, application?.id, application?.resume_document_id, isProcessing, loadDocument])
+
+  const retry = useCallback(async () => {
+    const docId = application?.resume_document_id
+    if (!docId || !enabled) return null
+
+    setDocumentLoading(true)
+    setDocumentError('')
+    setProcessingTimedOut(false)
+    pollCount.current = 0
+
+    try {
+      const response = await aiApi.retryDocument(docId)
+      setResumeDocument(response.data)
+      await refreshRef.current?.()
+      return response.data
+    } catch (err) {
+      setDocumentError(err.normalized?.message || 'Unable to retry AI processing.')
+      return null
+    } finally {
+      setDocumentLoading(false)
+    }
+  }, [application?.resume_document_id, enabled])
 
   const runScreening = useCallback(async () => {
     if (!application?.id) return null
@@ -177,14 +210,15 @@ export function useApplicationAi(application, { refreshApplication, enabled = tr
     documentError,
     analysis,
     match,
-    uiState,
-    isProcessing,
+    uiState: processingTimedOut ? 'failed' : uiState,
+    isProcessing: !processingTimedOut && isProcessing,
     screening,
     screeningMeta,
     screeningLoading,
     screeningError,
     runScreening,
     refresh,
+    retry,
     clearScreeningError: () => setScreeningError(''),
   }
 }

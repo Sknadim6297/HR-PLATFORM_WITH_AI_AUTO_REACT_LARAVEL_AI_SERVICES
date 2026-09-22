@@ -29,6 +29,15 @@ export function ApplicationsIndexPage({
     refresh,
   } = useApplications()
 
+  const statusTabs = [
+    ['All', ''],
+    ['Screening', 'screening'],
+    ['Shortlisted', 'shortlisted'],
+    ['Interview', 'interview'],
+    ['Selected', 'selected'],
+    ['Rejected', 'rejected'],
+  ]
+
   return (
     <div className="page">
       <header className="page__header">
@@ -38,6 +47,21 @@ export function ApplicationsIndexPage({
           <p>{subtitle}</p>
         </div>
       </header>
+
+      {forStaff ? (
+        <div className="application-tabs" role="tablist" aria-label="Application status filters">
+          {statusTabs.map(([label, value]) => (
+            <Button
+              key={value || 'all'}
+              type="button"
+              variant={filters.status === value ? 'primary' : 'ghost'}
+              onClick={() => setFilter('status', value)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+      ) : null}
 
       <ApplicationFilters
         searchInput={searchInput}

@@ -27,6 +27,7 @@ export function AiAssessmentCard({
   screeningLoading,
   screeningError,
   onRefresh,
+  onRetry,
   onRunScreening,
 }) {
   if (documentLoading && !document && hasResume) {
@@ -76,8 +77,8 @@ export function AiAssessmentCard({
           {uiState === 'failed' ? (
             <AiErrorState
               title="AI analysis failed. Please try again later."
-              description="The resume document failed processing. Upload a new resume on a new application if needed."
-              onRetry={onRefresh}
+              description={document?.error_message || 'The resume document failed processing. Retry the AI analysis.'}
+              onRetry={onRetry || onRefresh}
             />
           ) : null}
 

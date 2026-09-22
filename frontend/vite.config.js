@@ -7,12 +7,12 @@ export default defineConfig({
   server: {
     proxy: {
       // Avoid CORS in local dev by proxying API calls through Vite.
-      // XAMPP serves Laravel from /ai-hr-platform/backend/public
+      // XAMPP serves Laravel from /HR-PLATFORM_WITH_AI_AUTO_REACT_LARAVEL_AI_SERVICES/backend/public
       '/api': {
         target: 'http://localhost',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => `/ai-hr-platform/backend/public${path}`,
+        rewrite: (path) => `/HR-PLATFORM_WITH_AI_AUTO_REACT_LARAVEL_AI_SERVICES/backend/public${path}`,
       },
     },
   },

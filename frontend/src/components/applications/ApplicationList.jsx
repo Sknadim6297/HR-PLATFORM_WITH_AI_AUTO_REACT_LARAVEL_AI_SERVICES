@@ -23,6 +23,9 @@ export function ApplicationCard({ application, basePath, forStaff }) {
       {forStaff && application.job_match?.score != null ? (
         <p className="muted">Match score: {application.job_match.score}</p>
       ) : null}
+      {forStaff && application.ai_screening?.score != null ? (
+        <p className="muted">AI screening: {application.ai_screening.score} · {application.ai_screening.recommendation}</p>
+      ) : null}
       <Link className="text-link" to={`${basePath}/applications/${application.id}`}>
         Open application
       </Link>
@@ -41,6 +44,7 @@ export function ApplicationTable({ applications, basePath, forStaff }) {
             <th scope="col">Status</th>
             <th scope="col">Applied</th>
             {forStaff ? <th scope="col">Match</th> : null}
+            {forStaff ? <th scope="col">AI screen</th> : null}
             <th scope="col">Updated</th>
             <th scope="col">Actions</th>
           </tr>
@@ -59,6 +63,13 @@ export function ApplicationTable({ applications, basePath, forStaff }) {
               </td>
               <td>{formatJobDate(application.applied_at)}</td>
               {forStaff ? <td>{application.job_match?.score ?? '—'}</td> : null}
+              {forStaff ? (
+                <td>
+                  {application.ai_screening?.score != null
+                    ? `${application.ai_screening.score} · ${application.ai_screening.recommendation}`
+                    : '—'}
+                </td>
+              ) : null}
               <td>{formatJobDate(application.updated_at)}</td>
               <td>
                 <Link className="text-link" to={`${basePath}/applications/${application.id}`}>

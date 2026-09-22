@@ -75,6 +75,26 @@ export function ApplicationFilters({
 
       {forStaff && showScoreFilters ? (
         <>
+          <Select
+            label="Sort by"
+            name="sort"
+            value={filters.sort}
+            onChange={(event) => onFilterChange('sort', event.target.value)}
+          >
+            <option value="screening_score">AI screening score</option>
+            <option value="match_score">Match score</option>
+            <option value="applied_at">Applied date</option>
+            <option value="updated_at">Updated date</option>
+          </Select>
+          <Select
+            label="Order"
+            name="direction"
+            value={filters.direction}
+            onChange={(event) => onFilterChange('direction', event.target.value)}
+          >
+            <option value="desc">Highest/newest first</option>
+            <option value="asc">Lowest/oldest first</option>
+          </Select>
           <Input
             label="Min match score"
             name="min_score"
